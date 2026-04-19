@@ -22,7 +22,6 @@ try {
         exit;
     }
 
-    // Нельзя удалить админа
     if ($username === getAdminUsername()) {
         http_response_code(403);
         echo json_encode(['error' => 'Cannot delete admin']);
@@ -30,8 +29,6 @@ try {
     }
 
     $db = getDb();
-
-    // Удаляем из БД
     $stmt = $db->prepare('DELETE FROM users WHERE id = :id AND username = :u');
     $stmt->bindValue(':id', $userId, SQLITE3_INTEGER);
     $stmt->bindValue(':u', $username, SQLITE3_TEXT);
@@ -42,22 +39,27 @@ try {
         exit;
     }
 
-    // Удаляем папку с файлами
+    // Удаляем папку (и из users, и из users_banned)
     $userDir = "/var/www/users/$username";
-    if (is_dir($userDir)) {
-        $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($userDir, RecursiveDirectoryIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::CHILD_FIRST
-        );
-        
-        foreach ($iterator as $file) {
-            if ($file->isDir()) {
-                rmdir($file->getPathname());
-            } else {
-                unlink($file->getPathname());
+    $bannedDir = "/var/www/users_banned/$username";
+    
+    foreach ([$userDir, $bannedDir] as $dir) {
+        if (is_dir($dir)) {
+            $files = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::CHILD_FIRST
+            );
+            
+            foreach ($files as $file) {
+                if ($file->isDir()) {
+                    rmdir($file->getPathname());
+                } else {
+                    unlink($file->getPathname());
+                }
             }
+            rmdir($dir);
+            error_log("DELETED directory: $dir");
         }
-        rmdir($userDir);
     }
 
     echo json_encode(['success' => true]);

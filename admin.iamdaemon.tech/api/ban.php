@@ -1,15 +1,11 @@
 <?php
-// Отключаем вывод ошибок в HTML
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
-
-// Гарантируем JSON-ответ
 header('Content-Type: application/json; charset=utf-8');
 
 try {
     require_once '/var/www/reg.iamdaemon.tech/config.php';
     
-    // Проверяем авторизацию
     if (!isAdmin()) {
         http_response_code(403);
         echo json_encode(['error' => 'Forbidden']);
@@ -26,7 +22,6 @@ try {
         exit;
     }
 
-    // Нельзя забанить админа
     if ($username === getAdminUsername()) {
         http_response_code(403);
         echo json_encode(['error' => 'Cannot ban admin']);
@@ -39,24 +34,34 @@ try {
     $stmt->bindValue(':u', $username, SQLITE3_TEXT);
 
     if ($stmt->execute()) {
-        // Если бан — перемещаем папку
+        $userDir = "/var/www/users/$username";
+        $bannedDir = "/var/www/users_banned/$username";
+        
         if ($status === 'banned') {
-            $userDir = "/var/www/users/$username";
-            $bannedDir = "/var/www/users_banned/$username";
-            
+            // БАН: перемещаем из users в users_banned
             if (is_dir($userDir)) {
                 if (!is_dir(dirname($bannedDir))) {
                     mkdir(dirname($bannedDir), 0755, true);
                 }
                 rename($userDir, $bannedDir);
+                error_log("BANNED: $username - moved to $bannedDir");
             }
         } else {
-            // Если разбан — возвращаем папку
-            $userDir = "/var/www/users/$username";
-            $bannedDir = "/var/www/users_banned/$username";
-            
-            if (is_dir($bannedDir) && !is_dir($userDir)) {
-                rename($bannedDir, $userDir);
+            // РАЗБАН: перемещаем из users_banned в users
+            if (is_dir($bannedDir)) {
+                if (!is_dir($userDir)) {
+                    rename($bannedDir, $userDir);
+                    error_log("UNBANNED: $username - moved to $userDir");
+                } else {
+                    // Папка уже есть в users, удаляем banned
+                    array_map('unlink', glob("$bannedDir/*"));
+                    rmdir($bannedDir);
+                }
+            } else {
+                // Если banned папки нет, создаём пустую users
+                if (!is_dir($userDir)) {
+                    mkdir($userDir, 0755, true);
+                }
             }
         }
         
