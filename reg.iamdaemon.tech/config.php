@@ -1,9 +1,7 @@
 <?php
-// === НАСТРОЙКИ СИСТЕМЫ ===
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
-// === ГЛОБАЛЬНЫЕ СЕССИИ ===
 ini_set('session.cookie_domain', '.iamdaemon.tech');
 ini_set('session.cookie_httponly', 1);
 ini_set('session.cookie_secure', 1);
@@ -13,7 +11,6 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// === БАЗА ДАННЫХ ===
 define('DB_PATH', __DIR__ . '/data/users.db');
 
 function getDb() {
@@ -22,7 +19,7 @@ function getDb() {
         $db = new SQLite3(DB_PATH, SQLITE3_OPEN_READWRITE | SQLITE3_OPEN_CREATE);
         $db->busyTimeout(5000);
         
-        // Обновленная структура таблицы (добавлены code и verified)
+        // Создаём таблицу, если её нет
         $db->exec("CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
@@ -33,11 +30,25 @@ function getDb() {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             status TEXT DEFAULT 'active'
         )");
+
+        // === АВТОМИГРАЦИЯ: добавляем колонки, если их нет ===
+        $cols = $db->query("PRAGMA table_info(users)")->fetchArray(SQLITE3_ASSOC);
+        $colNames = [];
+        while ($cols) {
+            $colNames[] = $cols['name'];
+            $cols = $db->query("PRAGMA table_info(users)")->fetchArray(SQLITE3_ASSOC);
+        }
+        
+        if (!in_array('code', $colNames)) {
+            $db->exec("ALTER TABLE users ADD COLUMN code TEXT DEFAULT NULL");
+        }
+        if (!in_array('verified', $colNames)) {
+            $db->exec("ALTER TABLE users ADD COLUMN verified INTEGER DEFAULT 0");
+        }
     }
     return $db;
 }
 
-// === ФУНКЦИИ ===
 function isLoggedIn() {
     return isset($_SESSION['user_id']) && isset($_SESSION['username']);
 }
