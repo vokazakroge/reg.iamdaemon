@@ -38,7 +38,7 @@ function sendEmail($to, $subject, $body) {
         $mail->AuthType = 'PLAIN';
         
         // Отладка (включи для теста)
-        $mail->SMTPDebug = 0; // Поставь 2 чтобы видеть логи
+        $mail->SMTPDebug = 2; // Поставь 2 чтобы видеть логи
         $mail->Debugoutput = 'error_log';
         
         $mail->setFrom(trim($_ENV['SMTP_USER']), 'Daemon Service');
