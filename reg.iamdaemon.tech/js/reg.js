@@ -89,7 +89,6 @@ regForm.addEventListener('submit', async e => {
             body: JSON.stringify({ username, email, password })
         });
 
-        // Безопасное чтение ответа
         const text = await res.text();
         let data;
         try {
@@ -135,11 +134,23 @@ codeForm.addEventListener('submit', async e => {
 
         if (!res.ok || data.error) throw new Error(data.error);
 
+        // Показываем экран успеха
         codeFormView.style.display = 'none';
         successView.style.display = 'block';
-        const link = `https://${currentUser}.iamdaemon.tech`;
-        document.getElementById('userLink').href = link;
-        document.getElementById('userLink').textContent = link;
+
+        const userSite = `https://${currentUser}.iamdaemon.tech`;
+        const dashboardUrl = 'https://reg.iamdaemon.tech/dashboard';
+
+        // Заполняем ссылку на сайт
+        const linkEl = document.getElementById('userLink');
+        linkEl.href = userSite;
+        linkEl.textContent = userSite;
+
+        // Привязываем кнопку Dashboard
+        const dashBtn = document.getElementById('dashboardBtn');
+        if (dashBtn) {
+            dashBtn.onclick = () => { window.location.href = dashboardUrl; };
+        }
 
     } catch (err) {
         console.error(err);

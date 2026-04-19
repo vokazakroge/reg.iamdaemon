@@ -40,7 +40,7 @@
             </form>
         </div>
 
-        <!-- ЭКРАН ВВОДА КОДА (скрыт по умолчанию) -->
+        <!-- ЭКРАН ВВОДА КОДА -->
         <div class="form-view" id="codeFormView" style="display: none;">
             <header>
                 <h1>VERIFY</h1>
@@ -61,7 +61,14 @@
             <div style="font-size:2rem;margin-bottom:6px">✦</div>
             <h2>добро пожаловать</h2>
             <p>твой поддомен активирован</p>
-            <a id="userLink" class="user-link" href="#" target="_blank"></a>
+
+            <a id="userLink" class="user-link" href="#" target="_blank" style="display:inline-block;margin:10px 0"></a>
+
+            <div id="successActions" style="margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+                <button id="dashboardBtn" type="button" style="background:#8b5cf6;color:#fff;font-size:0.85rem;padding:10px 16px;border:none;border-radius:8px;cursor:pointer;font-family:'Orbitron',sans-serif">
+                    🔐 Личный кабинет
+                </button>
+            </div>
         </div>
     </div>
 
