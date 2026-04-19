@@ -1,237 +1,263 @@
-const dropZone = document.getElementById("dropZone");
-const fileInput = document.getElementById("fileInput");
-const statusMsg = document.getElementById("statusMsg");
+// SIDEBAR TOGGLE
+const sidebar = document.getElementById('sidebar');
+const sidebarToggle = document.getElementById('sidebarToggle');
+const menuBtn = document.getElementById('menuBtn');
 
-["dragenter", "dragover"].forEach((eventName) => {
-    dropZone.addEventListener(
-        eventName,
-        (e) => {
-            e.preventDefault();
-            dropZone.classList.add("dragover");
-        },
-        false
-    );
-});
+// Desktop toggle
+if (sidebarToggle) {
+    sidebarToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('collapsed');
+        // Сохраняем состояние
+        localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+    });
 
-["dragleave", "drop"].forEach((eventName) => {
-    dropZone.addEventListener(
-        eventName,
-        (e) => {
-            e.preventDefault();
-            dropZone.classList.remove("dragover");
-        },
-        false
-    );
-});
-
-dropZone.addEventListener("drop", (e) => {
-    handleFiles(e.dataTransfer.files);
-});
-
-fileInput.addEventListener("change", (e) => {
-    handleFiles(e.target.files);
-});
-
-async function handleFiles(files) {
-    if (!files.length) return;
-
-    statusMsg.textContent = "Loading...";
-    statusMsg.className = "status-msg";
-
-    for (const file of files) {
-        const formData = new FormData();
-        formData.append("file", file);
-
-        try {
-            const res = await fetch("/api/upload.php", {
-                method: "POST",
-                body: formData,
-            });
-
-            // Проверяем, что сервер точно вернул JSON
-            const contentType = res.headers.get("content-type");
-            if (!contentType || !contentType.includes("application/json")) {
-                const rawText = await res.text();
-                throw new Error("Server returned HTML: " + rawText.substring(0, 150));
-            }
-
-            const data = await res.json();
-
-            if (!res.ok || data.error) {
-                throw new Error(data.error || "Upload failed");
-            }
-
-            statusMsg.textContent = file.name + " uploaded";
-            statusMsg.className = "status-msg success";
-            setTimeout(() => location.reload(), 800);
-        } catch (err) {
-            console.error("Upload error:", err);
-            statusMsg.textContent = file.name + ": " + err.message;
-            statusMsg.className = "status-msg error";
-        }
+    // Восстанавливаем состояние
+    if (localStorage.getItem('sidebarCollapsed') === 'true') {
+        sidebar.classList.add('collapsed');
     }
 }
 
-// Inline rename logic (double click)
-document.querySelectorAll(".filename-text").forEach((span) => {
-    span.addEventListener("dblclick", function() {
-        const originalName = this.dataset.name;
-        if (this.querySelector("input")) return;
+// Mobile menu
+if (menuBtn) {
+    menuBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('mobile-open');
+    });
+}
 
-        const input = document.createElement("input");
-        input.type = "text";
-        input.value = originalName;
-        input.className = "rename-input";
+// NAVIGATION
+document.querySelectorAll('.nav-item[data-section]').forEach(item => {
+    item.addEventListener('click', function(e) {
+        // Если это внешняя ссылка - не предотвращаем
+        if (this.href && this.href.includes('reg.iamdaemon.tech')) {
+            return;
+        }
 
-        this.textContent = "";
-        this.appendChild(input);
-        input.focus();
-        input.select();
+        e.preventDefault();
 
-        let isCanceled = false;
+        // Убираем active со всех
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
 
-        const finishEdit = async() => {
-            const newName = input.value.trim();
+        // Добавляем active текущему
+        this.classList.add('active');
+        const sectionId = this.dataset.section;
+        const section = document.getElementById(`section-${sectionId}`);
+        if (section) {
+            section.classList.add('active');
+        }
+    });
+});
 
-            if (isCanceled || !newName || newName === originalName) {
-                this.textContent = originalName;
+// FILE UPLOAD
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const statusMsg = document.getElementById('statusMsg');
+
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, preventDefaults, false);
+});
+
+function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+}
+
+['dragenter', 'dragover'].forEach(eventName => {
+    dropZone.addEventListener(eventName, highlight, false);
+});
+
+['dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, unhighlight, false);
+});
+
+function highlight(e) {
+    dropZone.classList.add('dragover');
+}
+
+function unhighlight(e) {
+    dropZone.classList.remove('dragover');
+}
+
+dropZone.addEventListener('drop', handleDrop, false);
+
+function handleDrop(e) {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    handleFiles(files);
+}
+
+fileInput.addEventListener('change', function() {
+    handleFiles(this.files);
+});
+
+function handleFiles(files) {
+    if (files.length === 0) return;
+
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+        formData.append('files[]', files[i]);
+    }
+
+    statusMsg.className = 'status-msg';
+    statusMsg.textContent = 'Загрузка...';
+    statusMsg.style.display = 'block';
+
+    fetch('/api/upload.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                statusMsg.className = 'status-msg error';
+                statusMsg.textContent = 'Ошибка: ' + data.error;
+            } else {
+                statusMsg.className = 'status-msg success';
+                statusMsg.textContent = '✅ Загружено файлов: ' + data.count;
+                setTimeout(() => location.reload(), 1000);
+            }
+        })
+        .catch(e => {
+            statusMsg.className = 'status-msg error';
+            statusMsg.textContent = 'Ошибка сети: ' + e.message;
+        });
+}
+
+// FILE DELETE
+document.querySelectorAll('.btn-icon.delete').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const filename = this.dataset.file;
+        if (!confirm(`Удалить ${filename}?`)) return;
+
+        const formData = new FormData();
+        formData.append('action', 'delete');
+        formData.append('file', filename);
+
+        fetch('/api/files.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Ошибка: ' + data.error);
+                }
+            });
+    });
+});
+
+// FILE EDIT (CodeMirror)
+let editor;
+const editorModal = document.getElementById('editorModal');
+const editorTitle = document.getElementById('editorTitle');
+const closeModal = document.getElementById('closeModal');
+const cancelEdit = document.getElementById('cancelEdit');
+const saveEdit = document.getElementById('saveEdit');
+
+document.querySelectorAll('.btn-icon.edit').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const filename = this.dataset.file;
+        openEditor(filename);
+    });
+});
+
+function openEditor(filename) {
+    editorTitle.textContent = 'Editing: ' + filename;
+    editorModal.classList.add('active');
+
+    // Загружаем содержимое
+    fetch(`/api/files.php?action=edit&file=${encodeURIComponent(filename)}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                alert('Ошибка: ' + data.error);
                 return;
             }
 
-            try {
-                const res = await fetch("/api/rename.php", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ old_name: originalName, new_name: newName }),
-                });
-                const data = await res.json();
+            const ext = filename.split('.').pop().toLowerCase();
+            const mode = getModeFromExt(ext);
 
-                if (!res.ok || data.error) {
-                    throw new Error(data.error);
-                }
-
-                location.reload();
-            } catch (err) {
-                alert("Error: " + err.message);
-                this.textContent = originalName;
-            }
-        };
-
-        input.addEventListener("blur", finishEdit);
-        input.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") {
-                input.blur();
-            } else if (e.key === "Escape") {
-                isCanceled = true;
-                input.blur();
-            }
-        });
-    });
-});
-
-// Delete handler
-document.querySelectorAll(".btn-icon.delete").forEach((btn) => {
-    btn.addEventListener("click", async() => {
-        const filename = btn.dataset.file;
-        if (!confirm("Delete " + filename + "?")) return;
-
-        try {
-            const res = await fetch("/api/delete.php", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ file: filename }),
-            });
-            const text = await res.text();
-            const data = JSON.parse(text);
-
-            if (!res.ok || data.error) {
-                throw new Error(data.error);
-            }
-
-            location.reload();
-        } catch (err) {
-            alert("Error: " + err.message);
-        }
-    });
-});
-
-// Editor modal logic
-const modal = document.getElementById("editorModal");
-const title = document.getElementById("editorTitle");
-const closeModal = document.getElementById("closeModal");
-const cancelEdit = document.getElementById("cancelEdit");
-const saveEdit = document.getElementById("saveEdit");
-const editorEl = document.getElementById("codeEditor");
-
-let currentFile = "";
-let cm = null;
-
-document.querySelectorAll(".btn-icon.edit").forEach((btn) => {
-    btn.addEventListener("click", async() => {
-        currentFile = btn.dataset.file;
-        title.textContent = "Editing: " + currentFile;
-
-        try {
-            const res = await fetch(
-                "/api/read.php?file=" + encodeURIComponent(currentFile)
-            );
-            const text = await res.text();
-            const data = JSON.parse(text);
-
-            if (!res.ok || data.error) {
-                throw new Error(data.error);
-            }
-
-            if (!cm) {
-                cm = CodeMirror.fromTextArea(editorEl, {
+            // Инициализируем CodeMirror если ещё нет
+            if (!editor) {
+                editor = CodeMirror.fromTextArea(document.getElementById('codeEditor'), {
+                    mode: mode,
+                    theme: 'dracula',
                     lineNumbers: true,
-                    theme: "dracula",
-                    mode: "htmlmixed",
-                    viewportMargin: Infinity,
+                    autoCloseTags: true,
+                    matchBrackets: true
                 });
+            } else {
+                editor.setOption('mode', mode);
             }
 
-            cm.setValue(data.content);
-            cm.refresh();
-            modal.classList.add("active");
-        } catch (err) {
-            alert("Error: " + err.message);
-        }
-    });
+            editor.setValue(data.content);
+            editor.refresh();
+        });
+}
+
+function getModeFromExt(ext) {
+    const modes = {
+        'html': 'htmlmixed',
+        'htm': 'htmlmixed',
+        'css': 'css',
+        'js': 'javascript',
+        'json': 'javascript',
+        'php': 'php',
+        'xml': 'xml',
+        'svg': 'xml'
+    };
+    return modes[ext] || 'text';
+}
+
+closeModal.addEventListener('click', () => {
+    editorModal.classList.remove('active');
 });
 
-closeModal.onclick = () => {
-    modal.classList.remove("active");
-};
+cancelEdit.addEventListener('click', () => {
+    editorModal.classList.remove('active');
+});
 
-cancelEdit.onclick = () => {
-    modal.classList.remove("active");
-};
+saveEdit.addEventListener('click', () => {
+    if (!editor) return;
 
-saveEdit.onclick = async() => {
-    const content = cm.getValue();
-    saveEdit.textContent = "Saving...";
+    const filename = editorTitle.textContent.replace('Editing: ', '');
+    const content = editor.getValue();
 
-    try {
-        const res = await fetch("/api/save.php", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                file: currentFile,
-                content: content,
-            }),
+    const formData = new FormData();
+    formData.append('action', 'save');
+    formData.append('file', filename);
+    formData.append('content', content);
+
+    saveEdit.disabled = true;
+    saveEdit.textContent = 'Сохранение...';
+
+    fetch('/api/files.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                editorModal.classList.remove('active');
+                setTimeout(() => location.reload(), 500);
+            } else {
+                alert('Ошибка: ' + data.error);
+                saveEdit.disabled = false;
+                saveEdit.textContent = 'Save';
+            }
+        })
+        .catch(e => {
+            alert('Ошибка сети: ' + e.message);
+            saveEdit.disabled = false;
+            saveEdit.textContent = 'Save';
         });
-        const data = await res.json();
+});
 
-        if (!res.ok || data.error) {
-            throw new Error(data.error);
-        }
-
-        modal.classList.remove("active");
-        location.reload();
-    } catch (err) {
-        alert("Error: " + err.message);
-    } finally {
-        saveEdit.textContent = "Save";
+// Закрытие модалки по клику вне
+editorModal.addEventListener('click', (e) => {
+    if (e.target === editorModal) {
+        editorModal.classList.remove('active');
     }
-};
+});
