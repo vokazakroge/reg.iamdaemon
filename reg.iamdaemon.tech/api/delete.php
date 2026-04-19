@@ -1,17 +1,35 @@
 <?php
-session_start();
+require_once __DIR__ . '/../config.php';
 header('Content-Type: application/json; charset=utf-8');
-if (!isset($_SESSION['username'])) { http_response_code(401); echo json_encode(['error' => 'Не авторизован']); exit; }
+
+if (!isLoggedIn()) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Not authorized']);
+    exit;
+}
 
 $input = json_decode(file_get_contents('php://input'), true);
 $filename = $input['file'] ?? '';
-if (!$filename || !preg_match('/^[a-z0-9\.\-_]+$/i', $filename)) { http_response_code(400); echo json_encode(['error' => 'Недопустимое имя файла']); exit; }
+
+if (!$filename || !preg_match('/^[a-z0-9\.\-_]+$/i', $filename)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Invalid filename']);
+    exit;
+}
 
 $userDir = '/var/www/users/' . $_SESSION['username'];
 $target = realpath("$userDir/$filename");
 
-if ($target === false || strpos($target, $userDir) !== 0 || !is_file($target)) { http_response_code(404); echo json_encode(['error' => 'Файл не найден']); exit; }
+if ($target === false || strpos($target, $userDir) !== 0 || !is_file($target)) {
+    http_response_code(404);
+    echo json_encode(['error' => 'File not found']);
+    exit;
+}
 
-if (unlink($target)) { echo json_encode(['success' => true]); }
-else { http_response_code(500); echo json_encode(['error' => 'Не удалось удалить файл']); }
+if (unlink($target)) {
+    echo json_encode(['success' => true]);
+} else {
+    http_response_code(500);
+    echo json_encode(['error' => 'Failed to delete file']);
+}
 ?>
