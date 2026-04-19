@@ -1,0 +1,9 @@
+﻿.ssh/
+**/data/users.db
+**/data/*.db
+**/data/sessions/
+users/
+users/*
+*.log
+.DS_Store
+Thumbs.db

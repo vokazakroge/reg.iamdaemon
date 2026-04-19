@@ -1,0 +1,12 @@
+.DS_Store
+Thumbs.db
+*.log
+cache/
+tmp/
+.env
+*.local.php
+data/users.db
+data/sessions/
+node_modules/
+vendor/
+composer.lock
