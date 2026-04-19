@@ -13,13 +13,21 @@ if (session_status() === PHP_SESSION_NONE) {
 
 define('DB_PATH', __DIR__ . '/data/users.db');
 
+// === НАСТРОЙКИ АДМИНА ===
+function getAdminUsername() {
+    return 'vokazakroge'; // Твой логин
+}
+
+function getAdminEmail() {
+    return 'social@iamdaemon.tech'; // Твоя почта для уведомлений
+}
+
 function getDb() {
     static $db = null;
     if ($db === null) {
         $db = new SQLite3(DB_PATH, SQLITE3_OPEN_READWRITE | SQLITE3_OPEN_CREATE);
         $db->busyTimeout(5000);
         
-        // Создаём таблицу, если её нет
         $db->exec("CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
@@ -31,21 +39,20 @@ function getDb() {
             status TEXT DEFAULT 'active'
         )");
 
-        // === ПРОВЕРКА И ДОБАВЛЕНИЕ КОЛОНОК ===
+        // Авто-миграция
         $result = $db->query("PRAGMA table_info(users)");
         $colNames = [];
         while ($col = $result->fetchArray(SQLITE3_ASSOC)) {
             $colNames[] = $col['name'];
         }
-        
-        // Добавляем code, если нет
         if (!in_array('code', $colNames)) {
             $db->exec("ALTER TABLE users ADD COLUMN code TEXT DEFAULT NULL");
         }
-        
-        // Добавляем verified, если нет
         if (!in_array('verified', $colNames)) {
             $db->exec("ALTER TABLE users ADD COLUMN verified INTEGER DEFAULT 0");
+        }
+        if (!in_array('status', $colNames)) {
+            $db->exec("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active'");
         }
     }
     return $db;
@@ -63,7 +70,7 @@ function requireLogin() {
 }
 
 function isAdmin() {
-    return isLoggedIn() && $_SESSION['username'] === 'vokazakroge';
+    return isLoggedIn() && $_SESSION['username'] === getAdminUsername();
 }
 
 function requireAdmin() {
@@ -71,5 +78,34 @@ function requireAdmin() {
         header('Location: https://reg.iamdaemon.tech/login');
         exit;
     }
+}
+
+// === ШАБЛОН ДЛЯ НОВЫХ ПОЛЬЗОВАТЕЛЕЙ ===
+function getTemplateIndex() {
+    return '<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{username}} — DAEMON</title>
+    <style>
+        body { font-family: system-ui, sans-serif; background: #0a0a0f; color: #e2e8f0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+        h1 { font-size: 2.5rem; margin-bottom: 1rem; }
+        p { color: #94a3b8; max-width: 500px; }
+        .badge { background: #8b5cf6; color: #fff; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; }
+        .cta { margin-top: 2rem; }
+        .btn { display: inline-block; padding: 12px 24px; background: #8b5cf6; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 500; }
+        .btn:hover { background: #7c3aed; }
+    </style>
+</head>
+<body>
+    <span class="badge">✨ Новый сайт</span>
+    <h1>{{username}}.iamdaemon.tech</h1>
+    <p>Этот поддомен только что создан. Загрузи свои файлы через <a href="https://reg.iamdaemon.tech/dashboard" style="color:#8b5cf6">личный кабинет</a>.</p>
+    <div class="cta">
+        <a href="https://reg.iamdaemon.tech/dashboard" class="btn">🔐 Открыть дашборд</a>
+    </div>
+</body>
+</html>';
 }
 ?>

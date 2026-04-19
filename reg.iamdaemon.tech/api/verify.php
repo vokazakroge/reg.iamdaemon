@@ -8,9 +8,8 @@ $code = trim($input['code'] ?? '');
 
 $db = getDb();
 
-// Ищем юзера
 $stmt = $db->prepare('SELECT id, code, verified FROM users WHERE username = :u');
-$stmt->bindValue(':u', $username);
+$stmt->bindValue(':u', $username, SQLITE3_TEXT);
 $user = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
 
 if (!$user) {
@@ -25,20 +24,37 @@ if ($user['verified']) {
 }
 
 if ($user['code'] == $code) {
-    // Код верный! Активируем
+    // Активируем
     $stmt = $db->prepare('UPDATE users SET verified = 1 WHERE id = :id');
-    $stmt->bindValue(':id', $user['id']);
+    $stmt->bindValue(':id', $user['id'], SQLITE3_INTEGER);
     $stmt->execute();
 
-    // Создаем папку пользователя
+    // Создаём папку и шаблон
     $userDir = "/var/www/users/$username";
-    if (!is_dir($userDir)) mkdir($userDir, 0755, true);
+    if (!is_dir($userDir)) {
+        mkdir($userDir, 0755, true);
+        
+        // Создаём index.html из шаблона
+        $template = getTemplateIndex();
+        $indexContent = str_replace('{{username}}', $username, $template);
+        file_put_contents("$userDir/index.html", $indexContent);
+        chmod("$userDir/index.html", 0644);
+        
+        // Создаём .htaccess для чистых URL
+        $htaccess = "Options -Indexes\n<IfModule mod_rewrite.c>\n  RewriteEngine On\n  RewriteCond %{REQUEST_FILENAME} !-f\n  RewriteCond %{REQUEST_FILENAME} !-d\n  RewriteRule ^ index.html [L]\n</IfModule>";
+        file_put_contents("$userDir/.htaccess", $htaccess);
+        chmod("$userDir/.htaccess", 0644);
+        
+        chown($userDir, 'www-data');
+        chown("$userDir/index.html", 'www-data');
+        chown("$userDir/.htaccess", 'www-data');
+    }
 
-    // Логиним пользователя
+    // Логиним
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['username'] = $username;
 
-    echo json_encode(['success' => true, 'redirect' => "https://$username.iamdaemon.tech"]);
+    echo json_encode(['success' => true, 'redirect' => "https://reg.iamdaemon.tech/dashboard"]);
 } else {
     http_response_code(400);
     echo json_encode(['error' => 'Неверный код']);

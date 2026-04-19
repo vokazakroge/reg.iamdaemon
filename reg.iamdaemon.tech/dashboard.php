@@ -48,12 +48,14 @@ if (is_dir($userDir)) {
             </div>
         </header>
 
-        <h2>Your Site</h2>
-        <p style="margin-bottom: 16px">
-            <a href="https://<?php echo $username; ?>.iamdaemon.tech" target="_blank" class="site-link">
-                https://<?php echo $username; ?>.iamdaemon.tech
-            </a>
-        </p>
+        <!-- КНОПКА ПЕРЕХОДА НА САЙТ -->
+        <div style="background: rgba(139,92,246,0.1); border: 1px solid #8b5cf6; border-radius: 10px; padding: 14px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center">
+            <div>
+                <strong>🌐 Твой сайт</strong><br>
+                <small style="color: #94a3b8">https://<?php echo $username; ?>.iamdaemon.tech</small>
+            </div>
+            <a href="https://<?php echo $username; ?>.iamdaemon.tech" target="_blank" class="upload-btn" style="margin:0; padding: 10px 20px">Открыть сайт ↗</a>
+        </div>
 
         <h2>Files</h2>
         <div class="file-list" id="fileList">
