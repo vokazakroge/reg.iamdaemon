@@ -1,65 +1,82 @@
-<?php
-require_once __DIR__ . '/config.php';
-
-// Если уже залогинен -> перекидываем на дашборд
-if (isLoggedIn()) {
-    header('Location: https://reg.iamdaemon.tech/dashboard');
-    exit;
-}
-
-$error = '';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = strtolower(trim($_POST['username'] ?? ''));
-    $password = $_POST['password'] ?? '';
-
-    if (!$username || !$password) {
-        $error = 'Введите логин и пароль';
-    } else {
-        $db = getDb();
-        // Запрашиваем id, пароль и статус
-        $stmt = $db->prepare('SELECT id, password_hash, status FROM users WHERE username = :u');
-        $stmt->bindValue(':u', $username, SQLITE3_TEXT);
-        $user = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
-
-        if ($user && password_verify($password, $user['password_hash'])) {
-            // Пароль верный -> ПРОВЕРЯЕМ СТАТУС
-            if ($user['status'] === 'banned') {
-                $error = 'Ваш аккаунт заблокирован администрацией';
-            } else {
-                // Если не забанен -> создаем сессию
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['username'] = $username;
-                
-                // Успех -> редирект на дашборд
-                header('Location: https://reg.iamdaemon.tech/dashboard');
-                exit;
-            }
-        } else {
-            $error = 'Неверный логин или пароль';
-        }
-    }
-}
-?>
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LOGIN — DAEMON</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <title>REG — DAEMON</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/auth.css">
 </head>
 <body>
     <div class="container">
-        <h1>LOGIN</h1>
-        <?php if ($error): ?><div class="error"><?=htmlspecialchars($error)?></div><?php endif; ?>
-        <form method="POST">
-            <input type="text" name="username" placeholder="логин" required autocomplete="off">
-            <input type="password" name="password" placeholder="пароль" required>
-            <button type="submit">войти</button>
-        </form>
-        <a href="https://reg.iamdaemon.tech" class="link">нет аккаунта? регистрация</a>
+        <!-- ЭКРАН РЕГИСТРАЦИИ -->
+        <div class="form-view" id="regFormView">
+            <header>
+                <a href="https://iamdaemon.tech" class="logo">DAEMON</a>
+                <h1>REG</h1>
+                <p class="subtitle">получи свой поддомен</p>
+                <div class="subdomain-preview" id="subdomainPreview">имя.iamdaemon.tech</div>
+            </header>
+
+            <form id="regForm" novalidate>
+                <div class="form-group">
+                    <label>имя пользователя</label>
+                    <input type="text" id="username" placeholder="myname" required autocomplete="off">
+                    <div class="validation-msg" id="usernameMsg"></div>
+                </div>
+                <div class="form-group">
+                    <label>email</label>
+                    <input type="email" id="email" placeholder="you@example.com" required>
+                    <div class="validation-msg" id="emailMsg"></div>
+                </div>
+                <div class="form-group">
+                    <label>пароль</label>
+                    <input type="password" id="password" placeholder="••••••••" required>
+                    <div class="validation-msg" id="passwordMsg"></div>
+                </div>
+                <button type="submit" id="submitBtn" disabled>создать аккаунт</button>
+            </form>
+            
+            <!-- КНОПКА ВХОДА (добавлена) -->
+            <div style="margin-top: 20px; text-align: center;">
+                <a href="https://reg.iamdaemon.tech/login" style="color: var(--primary); text-decoration: none; font-size: 0.9rem;">
+                    уже есть аккаунт? войти
+                </a>
+            </div>
+        </div>
+
+        <!-- ЭКРАН ВВОДА КОДА -->
+        <div class="form-view" id="codeFormView" style="display: none;">
+            <header>
+                <h1>VERIFY</h1>
+                <p class="subtitle">мы отправили код на <span id="targetEmail" style="color:var(--primary)">...</span></p>
+            </header>
+            <form id="codeForm">
+                <div class="form-group">
+                    <label>код из письма</label>
+                    <input type="text" id="verifyCode" placeholder="123456" maxlength="6" style="text-align:center; letter-spacing:5px; font-size:1.5rem;" required>
+                    <div class="validation-msg" id="codeMsg"></div>
+                </div>
+                <button type="submit" id="verifyBtn">подтвердить</button>
+            </form>
+        </div>
+
+        <!-- УСПЕХ -->
+        <div class="success-view" id="successView" style="display: none;">
+            <div style="font-size:2rem;margin-bottom:6px">✦</div>
+            <h2>добро пожаловать</h2>
+            <p>твой поддомен активирован</p>
+            
+            <a id="userLink" class="user-link" href="#" target="_blank" style="display:inline-block;margin:10px 0"></a>
+            
+            <div id="successActions" style="margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+                <button id="dashboardBtn" type="button" style="background:#8b5cf6;color:#fff;font-size:0.85rem;padding:10px 16px;border:none;border-radius:8px;cursor:pointer;font-family:'Orbitron',sans-serif">
+                    🔐 Личный кабинет
+                </button>
+            </div>
+        </div>
     </div>
+
+    <script src="js/reg.js" defer></script>
 </body>
 </html>
