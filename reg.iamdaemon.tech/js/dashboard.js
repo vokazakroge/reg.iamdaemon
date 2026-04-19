@@ -1,68 +1,193 @@
-const dropZone = document.getElementById('dropZone'),
-    fileInput = document.getElementById('fileInput'),
-    statusMsg = document.getElementById('statusMsg');
-['dragenter', 'dragover'].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault();
-    dropZone.classList.add('dragover') }));
-['dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault();
-    dropZone.classList.remove('dragover') }));
-dropZone.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
-fileInput.addEventListener('change', e => handleFiles(e.target.files));
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const statusMsg = document.getElementById('statusMsg');
+
+['dragenter', 'dragover'].forEach((eventName) => {
+    dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    }, false);
+});
+
+['dragleave', 'drop'].forEach((eventName) => {
+    dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+    }, false);
+});
+
+dropZone.addEventListener('drop', (e) => {
+    handleFiles(e.dataTransfer.files);
+});
+
+fileInput.addEventListener('change', (e) => {
+    handleFiles(e.target.files);
+});
 
 async function handleFiles(files) {
     if (!files.length) return;
-    statusMsg.textContent = '⏳ загрузка...';
+
+    statusMsg.textContent = 'Loading...';
     statusMsg.className = 'status-msg';
+
     for (const file of files) {
-        const fd = new FormData();
-        fd.append('file', file);
-        try { const res = await fetch('/api/upload.php', { method: 'POST', body: fd }); const d = await res.json(); if (!res.ok || d.error) throw new Error(d.error || 'ошибка');
-            statusMsg.textContent = `✅ ${file.name} загружен`;
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await fetch('/api/upload.php', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+
+            if (!res.ok || data.error) {
+                throw new Error(data.error || 'Upload failed');
+            }
+
+            statusMsg.textContent = file.name + ' uploaded';
             statusMsg.className = 'status-msg success';
-            setTimeout(() => location.reload(), 800) } catch (err) { statusMsg.textContent = `❌ ${file.name}: ${err.message}`;
-            statusMsg.className = 'status-msg error' }
+            setTimeout(() => location.reload(), 800);
+
+        } catch (err) {
+            statusMsg.textContent = file.name + ': ' + err.message;
+            statusMsg.className = 'status-msg error';
+        }
     }
 }
 
-document.querySelectorAll('.btn-icon.delete').forEach(btn => {
+// Delete handler
+document.querySelectorAll('.btn-icon.delete').forEach((btn) => {
     btn.addEventListener('click', async() => {
-        const f = btn.dataset.file;
-        if (!confirm(`Удалить ${f}?`)) return;
+        const filename = btn.dataset.file;
+        if (!confirm('Delete ' + filename + '?')) return;
+
         try {
-            const res = await fetch('/api/delete.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file: f }) });
-            const txt = await res.text();
-            const d = JSON.parse(txt);
-            if (!res.ok || d.error) throw new Error(d.error);
-            location.reload()
-        } catch (err) { alert('Ошибка: ' + err.message) }
-    })
+            const res = await fetch('/api/delete.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file: filename })
+            });
+            const text = await res.text();
+            const data = JSON.parse(text);
+
+            if (!res.ok || data.error) {
+                throw new Error(data.error);
+            }
+
+            location.reload();
+
+        } catch (err) {
+            alert('Error: ' + err.message);
+        }
+    });
 });
 
-const modal = document.getElementById('editorModal'),
-    title = document.getElementById('editorTitle'),
-    close = document.getElementById('closeModal'),
-    cancel = document.getElementById('cancelEdit'),
-    save = document.getElementById('saveEdit'),
-    editorEl = document.getElementById('codeEditor');
-let currentFile = '',
-    cm;
-document.querySelectorAll('.btn-icon.edit').forEach(btn => {
+// Rename handler
+document.querySelectorAll('.btn-rename').forEach((btn) => {
+    btn.addEventListener('click', async() => {
+        const oldName = btn.dataset.file;
+        const newName = prompt('New filename (with extension):', oldName);
+
+        if (!newName || newName === oldName) return;
+
+        try {
+            const res = await fetch('/api/rename.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ old_name: oldName, new_name: newName })
+            });
+            const data = await res.json();
+
+            if (!res.ok || data.error) {
+                throw new Error(data.error);
+            }
+
+            location.reload();
+
+        } catch (err) {
+            alert('Error: ' + err.message);
+        }
+    });
+});
+
+// Editor modal logic
+const modal = document.getElementById('editorModal');
+const title = document.getElementById('editorTitle');
+const closeModal = document.getElementById('closeModal');
+const cancelEdit = document.getElementById('cancelEdit');
+const saveEdit = document.getElementById('saveEdit');
+const editorEl = document.getElementById('codeEditor');
+
+let currentFile = '';
+let cm = null;
+
+document.querySelectorAll('.btn-icon.edit').forEach((btn) => {
     btn.addEventListener('click', async() => {
         currentFile = btn.dataset.file;
-        title.textContent = `редактирование: ${currentFile}`;
+        title.textContent = 'Editing: ' + currentFile;
+
         try {
-            const res = await fetch(`/api/read.php?file=${encodeURIComponent(currentFile)}`);
-            const txt = await res.text();
-            const d = JSON.parse(txt);
-            if (!res.ok || d.error) throw new Error(d.error);
-            if (!cm) cm = CodeMirror.fromTextArea(editorEl, { lineNumbers: true, theme: 'dracula', mode: 'htmlmixed', viewportMargin: Infinity });
-            cm.setValue(d.content);
+            const res = await fetch('/api/read.php?file=' + encodeURIComponent(currentFile));
+            const text = await res.text();
+            const data = JSON.parse(text);
+
+            if (!res.ok || data.error) {
+                throw new Error(data.error);
+            }
+
+            if (!cm) {
+                cm = CodeMirror.fromTextArea(editorEl, {
+                    lineNumbers: true,
+                    theme: 'dracula',
+                    mode: 'htmlmixed',
+                    viewportMargin: Infinity
+                });
+            }
+
+            cm.setValue(data.content);
             cm.refresh();
-            modal.classList.add('active')
-        } catch (err) { alert('Ошибка: ' + err.message) }
-    })
+            modal.classList.add('active');
+
+        } catch (err) {
+            alert('Error: ' + err.message);
+        }
+    });
 });
-close.onclick = cancel.onclick = () => modal.classList.remove('active');
-save.onclick = async() => { const c = cm.getValue();
-    save.textContent = '⏳ сохраняем...'; try { const res = await fetch('/api/save.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file: currentFile, content: c }) }); const d = await res.json(); if (!res.ok || d.error) throw new Error(d.error);
+
+closeModal.onclick = () => {
+    modal.classList.remove('active');
+};
+
+cancelEdit.onclick = () => {
+    modal.classList.remove('active');
+};
+
+saveEdit.onclick = async() => {
+    const content = cm.getValue();
+    saveEdit.textContent = 'Saving...';
+
+    try {
+        const res = await fetch('/api/save.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                file: currentFile,
+                content: content
+            })
+        });
+        const data = await res.json();
+
+        if (!res.ok || data.error) {
+            throw new Error(data.error);
+        }
+
         modal.classList.remove('active');
-        location.reload() } catch (err) { alert('Ошибка: ' + err.message) } finally { save.textContent = '💾 сохранить' } };
+        location.reload();
+
+    } catch (err) {
+        alert('Error: ' + err.message);
+    } finally {
+        saveEdit.textContent = 'Save';
+    }
+};

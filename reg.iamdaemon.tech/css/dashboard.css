@@ -304,3 +304,47 @@ h2 {
     border-color: var(--error);
     color: var(--error);
 }
+
+.rename-input {
+    width: 100%;
+    padding: 10px 12px;
+    background: #0c0c12;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'Inter', monospace;
+    font-size: 0.9rem;
+    margin: 8px 0;
+}
+
+.rename-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+
+.rename-hint {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: 4px;
+}
+
+.btn-rename {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.2s;
+}
+
+.btn-rename:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
