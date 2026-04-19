@@ -26,25 +26,28 @@ function sendEmail($to, $subject, $body) {
         $mail->isSMTP();
         $mail->Host       = $_ENV['SMTP_HOST'] ?? 'smtp.mail.ru';
         $mail->SMTPAuth   = true;
-        $mail->Username   = $_ENV['SMTP_USER'];
-        $mail->Password   = $_ENV['SMTP_PASS'];
+        $mail->Username   = trim($_ENV['SMTP_USER']); // Убираем пробелы
+        $mail->Password   = trim($_ENV['SMTP_PASS']); // Убираем пробелы
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
         $mail->Port       = $_ENV['SMTP_PORT'] ?? 465;
         $mail->CharSet    = 'UTF-8';
         $mail->Timeout    = 30;
         
-        // Отладочная информация
-        $mail->SMTPDebug = 0; // 2 для включения отладки
+        // === ВАЖНО: Принудительно используем PLAIN ===
+        $mail->SMTPAutoTLS = false;
+        $mail->AuthType = 'PLAIN';
+        
+        // Отладка (включи для теста)
+        $mail->SMTPDebug = 0; // Поставь 2 чтобы видеть логи
         $mail->Debugoutput = 'error_log';
         
-        $mail->setFrom($_ENV['SMTP_USER'], 'Daemon Service');
+        $mail->setFrom(trim($_ENV['SMTP_USER']), 'Daemon Service');
         $mail->addAddress($to);
         
         $mail->isHTML(true);
         $mail->Subject = $subject;
         $mail->Body    = $body;
         
-        // Пробуем отправить
         if (!$mail->send()) {
             return "Ошибка отправки: " . $mail->ErrorInfo;
         }
