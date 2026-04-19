@@ -101,28 +101,62 @@ document.querySelectorAll('.btn-icon.delete').forEach(btn => {
     });
 });
 
-// ================= RENAME FILE (DOUBLE CLICK) =================
+// ================= INLINE RENAME (DOUBLE CLICK) =================
 document.querySelectorAll('.filename-text').forEach(el => {
     el.addEventListener('dblclick', function() {
-        const oldName = this.dataset.name;
-        const newName = prompt('Новое имя файла:', oldName);
+        const span = this;
+        const oldName = span.dataset.name;
+        const currentText = span.textContent;
 
-        if (!newName || newName === oldName) return;
+        // Создаем инпут
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = currentText;
+        input.className = 'rename-input'; // Стилизуем как текст
+        input.style.cssText = "background:transparent; border:1px solid var(--primary); color:var(--text); font-size:1rem; padding:2px 5px; border-radius:4px; width:70%; font-family:inherit;";
 
-        const fd = new FormData();
-        fd.append('action', 'rename');
-        fd.append('old_name', oldName);
-        fd.append('new_name', newName);
+        // Заменяем span на input
+        span.replaceWith(input);
+        input.focus();
+        input.select();
 
-        fetch('/api/files.php', {
-                method: 'POST',
-                body: fd
-            })
-            .then(r => r.json())
-            .then(d => {
-                if (d.success) location.reload();
-                else alert('Ошибка: ' + d.error);
-            });
+        // Функция сохранения
+        const saveRename = () => {
+            const newName = input.value.trim();
+            if (newName && newName !== oldName) {
+                const fd = new FormData();
+                fd.append('action', 'rename');
+                fd.append('old_name', oldName);
+                fd.append('new_name', newName);
+
+                fetch('/api/files.php', {
+                        method: 'POST',
+                        body: fd
+                    })
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d.success) location.reload();
+                        else {
+                            alert('Ошибка: ' + d.error);
+                            location.reload();
+                        }
+                    });
+            } else {
+                // Если не изменили или пусто - отмена
+                input.replaceWith(span);
+            }
+        };
+
+        // Слушатели событий
+        input.addEventListener('blur', saveRename);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                input.blur(); // Trigger blur event
+            } else if (e.key === 'Escape') {
+                input.value = currentText;
+                input.blur();
+            }
+        });
     });
 });
 
@@ -316,7 +350,6 @@ window.deleteShortUrl = function(id) {
 };
 
 // ================= SETTINGS =================
-// Avatar
 const avatarInput = document.getElementById('avatarInput');
 if (avatarInput) {
     avatarInput.addEventListener('change', function() {
@@ -351,7 +384,6 @@ if (avatarInput) {
     });
 }
 
-// Password
 const btnChangePass = document.getElementById('btnChangePass');
 if (btnChangePass) {
     btnChangePass.addEventListener('click', () => {
@@ -384,7 +416,6 @@ if (btnChangePass) {
     });
 }
 
-// Delete account
 const btnRequestDelete = document.getElementById('btnRequestDelete');
 if (btnRequestDelete) {
     btnRequestDelete.addEventListener('click', () => {
