@@ -47,6 +47,14 @@ async function handleFiles(files) {
                 method: "POST",
                 body: formData,
             });
+
+            // Проверяем, что сервер точно вернул JSON
+            const contentType = res.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                const rawText = await res.text();
+                throw new Error("Server returned HTML: " + rawText.substring(0, 150));
+            }
+
             const data = await res.json();
 
             if (!res.ok || data.error) {
@@ -57,6 +65,7 @@ async function handleFiles(files) {
             statusMsg.className = "status-msg success";
             setTimeout(() => location.reload(), 800);
         } catch (err) {
+            console.error("Upload error:", err);
             statusMsg.textContent = file.name + ": " + err.message;
             statusMsg.className = "status-msg error";
         }
