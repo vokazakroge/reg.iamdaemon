@@ -27,14 +27,27 @@ $stmt->bindValue(':s', $status, SQLITE3_TEXT);
 $stmt->bindValue(':u', $username, SQLITE3_TEXT);
 
 if ($stmt->execute()) {
-    // Если бан — удаляем папку с файлами (опционально)
+    // Если бан — перемещаем папку
     if ($status === 'banned') {
         $userDir = "/var/www/users/$username";
+        $bannedDir = "/var/www/users_banned/$username";
+        
         if (is_dir($userDir)) {
-            // Можно добавить рекурсивное удаление, но пока просто переименуем
-            rename($userDir, "/var/www/users_banned/$username");
+            if (!is_dir(dirname($bannedDir))) {
+                mkdir(dirname($bannedDir), 0755, true);
+            }
+            rename($userDir, $bannedDir);
+        }
+    } else {
+        // Если разбан — возвращаем папку
+        $userDir = "/var/www/users/$username";
+        $bannedDir = "/var/www/users_banned/$username";
+        
+        if (is_dir($bannedDir) && !is_dir($userDir)) {
+            rename($bannedDir, $userDir);
         }
     }
+    
     echo json_encode(['success' => true]);
 } else {
     http_response_code(500);

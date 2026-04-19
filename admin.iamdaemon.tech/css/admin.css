@@ -176,3 +176,56 @@ th {
     border-color: var(--error);
     color: var(--error);
 }
+
+.actions {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+}
+
+.btn-action {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: 0.2s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-action:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.btn-action.ban:hover {
+    border-color: #f59e0b;
+    color: #f59e0b;
+}
+
+.btn-action.delete:hover {
+    border-color: var(--error);
+    color: var(--error);
+}
+
+.link {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.link:hover {
+    text-decoration: underline;
+}
+
+.modal {
+    display: none;
+}
+
+.modal.active {
+    display: flex !important;
+}
